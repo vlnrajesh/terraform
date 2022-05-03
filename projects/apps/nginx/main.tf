@@ -2,6 +2,8 @@
 resource "docker_container" "nginx-service" {
   name = "nginx-server-1"
   image = "nginx:latest"
+  restart   = "on-failure"
+  must_run  = "true"
   ports {
     internal = 80
     external = 80
