@@ -1,0 +1,10 @@
+{
+    "GEN_2C4G"  : ["t3a.small", "t2a.medium", "t3.small"],
+    "GEN_2C8G"  : ["m5a.large", "t3a.large", "m6a.large", "m7i.large", "m5.large", "t3.large"],
+    "CPU_2C4G"  : ["c5a.large", "c6a.large", "c5ad.large", "c7a.large", "c7i.large", "c5.large", "c6i.large"],
+    "CPU_4C8G"  : ["c5a.xlarge", "c6a.xlarge", "c7i.xlarge", "c5.xlarge", "c5d.xlarge", "c6i.xlarge"],
+    "CPU_8C16G" : ["c5a.2xlarge", "c6a.2xlarge", "c7i.2xlarge", "c5.xlarge", "c5d.xlarge", "c5n.xlarge"],
+    "MEM_4C32G" : ["r5a.xlarge", "r6a.xlarge", "r5ad.xlarge", "r6i.xlarge", "r5.xlarge"],
+    "MEM_8C64G" : ["r5a.2xlarge", "r6a.2xlarge", "r5ad.2xlarge", "r6i.2xlarge", "r5.2xlarge"],
+    "GEN_OPS"   : ["m5a.large", "t3a.medium", "t3a.large", "m6a.large", "m7a.large", "t3.medium", "t2.medium"]
+}
