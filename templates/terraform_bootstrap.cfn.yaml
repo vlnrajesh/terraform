@@ -1,0 +1,116 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Template for creating S3 bucket and Dynamodb table to persist terraform state and locks
+Parameters:
+  TerraformStateBucketPrefix:
+    Type: String
+    Default: terraform-state
+  ReadCapacityUnits:
+    Type: Number
+    Default: 5
+  WriteCapacityUnits:
+    Type: Number
+    Default: 5
+  Department:
+    Type: CommaDelimitedList
+    Default: "DevOPS"
+  UsersAccountId:
+    Type: String
+    Default: "1234567890"
+Resources:
+  TerraformS3StateBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${TerraformStateBucketPrefix}-${AWS::AccountId}-${AWS::Region}"
+      AccessControl: Private
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+         - ServerSideEncryptionByDefault:
+            SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+  TerraformStateS3BucketPolicy:
+    DependsOn:
+      - TerraformS3StateBucket
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref TerraformS3StateBucket
+      PolicyDocument:
+        Statement:
+          - Sid: DenyDeletingTerraformStateFiles
+            Effect: Deny
+            Principal: "*"
+            Action:
+              - "s3:DeleteObject"
+            Resource: !Sub "arn:aws:s3:::${TerraformS3StateBucket}/env*"
+  TerraformStateBucketSSMParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Type: String
+      Name: !Sub /terraform/${AWS::Region}/state_bucket
+      Value: !Ref TerraformS3StateBucket
+      Tags:
+        Name: !Sub ${AWS::AccountId}-terraform-state-bucket
+  TerraformStateLockDynamoDBTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${AWS::AccountId}-terraform-state-lock-db"
+      BillingMode: PROVISIONED
+      ProvisionedThroughput:
+        ReadCapacityUnits:  !Ref ReadCapacityUnits
+        WriteCapacityUnits: !Ref WriteCapacityUnits
+      AttributeDefinitions:
+        - AttributeName: LockID
+          AttributeType: S
+      KeySchema:
+        - AttributeName: LockID
+          KeyType: HASH
+      SSESpecification:
+        SSEEnabled: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::AccountId}-terraform-state-lock-db"
+        - Key: ApplicationVersion
+          Value: 1.0
+  TerraformStateDynamoDBSSMParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Type: String
+      Name: !Sub /terraform/${AWS::Region}/dynamodb_table
+      Value: !Ref TerraformStateLockDynamoDBTable
+      Tags:
+        Name: !Sub ${AWS::AccountId}-terraform-dynamodb-table
+  AutomationDeployRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !Sub AutomationDeployRole_${AWS::AccountId}
+      Description: "IAM role for build and deploy of resources"
+      Path: /
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS:
+                - !Sub "arn:aws:iam::${AWS::AccountId}:root"
+                - !Sub "arn:aws:iam::${UsersAccountId}:root"
+              Service:
+                - cloudformation.amazonaws.com
+                - ec2.amazonaws.com
+                - codebuild.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+            Condition:
+              StringEquals:
+                "aws:PrincipalTag/DevOPS": true
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::AccountId}_AutomationDeployRole
+        - Key: DevOPS
+          Value: true
